@@ -149,12 +149,14 @@ module Sprite = struct
 
 	let correct_movement_for_collision rect other_rect (mvmt: Vector2.t) =
 		let open Rectangle in
-		let left_over = ((x rect) +. (Vector2.x mvmt)) -. (x other_rect) in
-		let right_over = ((x other_rect) +. (width other_rect)) -.
-			((x rect) +. (width rect) +. (Vector2.x mvmt)) in
-		let top_over = ((y rect) +. (Vector2.y mvmt)) -. (y other_rect) in
-		let bottom_over = ((y other_rect) +. (height other_rect)) -.
-			((y rect) +. (Vector2.y mvmt) +. (height rect)) in
+		let in_between_points vf rf1 rf2 =
+			let a = ((rf1 rect) +. (vf mvmt)) -. (rf1 other_rect) in
+			let b = ((rf1 other_rect) +. (rf2 other_rect)) -.
+				((rf1 rect) +. (rf2 rect) +. (vf mvmt))
+			in (a, b)
+		in
+		let (left_over, right_over) = in_between_points Vector2.x x width in
+		let (top_over, bottom_over) = in_between_points Vector2.y y height in
 		if (left_over > 0. && right_over > 0. &&
 			top_over > 0. && bottom_over > 0.) then
 			Vector2.create
