@@ -140,8 +140,10 @@ module Sprite = struct
 		in
 		List.nth_opt (List.filter (fun other_sprite ->
 			let line_between_points vf rf =
-				((vf center) -. (rf other_sprite.dest_rect)) <>
-				((vf vector_end) -. (rf other_sprite.dest_rect))
+				(((vf center) < (rf other_sprite.dest_rect)) &&
+				((vf vector_end) > (rf other_sprite.dest_rect))) ||
+				(((vf center) > (rf other_sprite.dest_rect)) &&
+				((vf vector_end) < (rf other_sprite.dest_rect)))
 			in
 			(line_between_points Vector2.x Rectangle.x) &&
 			(line_between_points Vector2.y Rectangle.y)
@@ -159,7 +161,7 @@ module Sprite = struct
 		let (top_over, bottom_over) = in_between_points Vector2.y y height in
 		if (left_over > 0. && right_over > 0. &&
 			top_over > 0. && bottom_over > 0.) then
-			Vector2.create
+			(Vector2.create
 				(if (left_over > right_over) then
 					(Vector2.x mvmt) -. left_over
 				else
@@ -167,24 +169,39 @@ module Sprite = struct
 				(if (top_over > bottom_over) then
 					(Vector2.y mvmt) -. top_over
 				else
-					(Vector2.y mvmt) +. bottom_over)
+					(Vector2.y mvmt) +. bottom_over),
+			true)
 		else
-			mvmt
+			(mvmt, false)
 
-			(* returns: new_movement, collided_with_ground(or any Other sprite in a downwards direction) *)
+	(* returns: new_movement, collided_with_ground(or any Other sprite in a downwards direction) *)
 	let correct_movement_for_collisions sprite movement sprites : Vector2.t * bool =
-		List.fold_right (fun other_sprite (new_movement, collide_with_ground) ->
-			(correct_movement_for_collision sprite.dest_rect other_sprite.dest_rect new_movement,
-			collide_with_ground || true)
+		List.fold_right (fun other_sprite (movement, collide_with_ground) ->
+			let (new_movement, _) = correct_movement_for_collision
+				sprite.dest_rect other_sprite.dest_rect movement in
+			let collide_with_ground = collide_with_ground ||
+				(((Vector2.y new_movement) < (Vector2.y movement)) &&
+				other_sprite.sprite_type = Other) in
+			(new_movement, collide_with_ground)
 		) sprites (movement, false)
 
-	(* TODO *)
 	let correct_movement_for_long_attack_collisions
 		(sprite: t)
 		(movement: Vector2.t)
 		(sprites: t list)
+		: Vector2.t * t list
 	=
-		(movement, [sprite])
+		List.fold_right (fun other_sprite (movement, enemies) ->
+			let (new_movement, corrected) = correct_movement_for_collision
+				sprite.dest_rect other_sprite.dest_rect movement in
+			if corrected then
+				match other_sprite.sprite_type with
+				| Bot _ | Player when sprite.team <> other_sprite.team ->
+						(movement, other_sprite :: enemies)
+				| _ -> (new_movement, enemies)
+			else
+				(movement, enemies)
+		) sprites (movement, [])
 
 	let render sprite spritesheet =
 		if sprite.visible then
@@ -224,7 +241,9 @@ type game_t = {
 	scenes: scene_t list;
 	mutable current_scene: int;
 	(*mutable animations: animation_t list;*)
-	mutable dialogs: dialog_t list
+	mutable dialogs: dialog_t list;
+	font: Font.t;
+	font_ratio: float (*width/height*)
 }
 
 module Config = struct
@@ -237,10 +256,9 @@ module Render = struct
 		let ix = (int_of_float x) in
 		let iy = (int_of_float y) in
 		let iw = (int_of_float width) in
-		let ifs = (int_of_float font_size) in
-		draw_rectangle ix iy iw ifs bg_color;
-		draw_text text ix iy ifs text_color;
-		Rectangle.create x y width font_size
+		draw_rectangle ix iy iw font_size bg_color;
+		draw_text text ix iy font_size text_color;
+		Rectangle.create x y width (float_of_int font_size)
 
 	(* returns if not done *)
 	let dialog (dialog: dialog_t) : bool =
@@ -250,7 +268,7 @@ module Render = struct
 				(text_box Color.white Color.black
 					(String.sub dialog.contents
 						0 ((String.length dialog.contents) - dialog.left))
-					25. 25. 600. 50.);
+					25. 25. 600. 50);
 		dialog.left > 0
 
 	let game game =
@@ -419,6 +437,7 @@ let tick_game game =
 		match current_scene.next_scene with
 		| Some next_scene -> game.current_scene <- next_scene
 		| None -> game.should_exit <- true;
+
 	game.scene_tick <- game.scene_tick + 1
 
 let save_game_data (_: game_t) = ()
@@ -441,7 +460,9 @@ let setup_game () = {
 		next_scene = None
 	}];
 	current_scene = 0;
-	dialogs = []
+	dialogs = [];
+	font = load_font "./resources/fonts/RobotoMono-Medium.ttf";
+	font_ratio = 1.;
 }
 
 let setup () =
