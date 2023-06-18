@@ -1,0 +1,65 @@
+{ "frames": [
+   {
+    "filename": "running-left-up 0.ase",
+    "frame": { "x": 0, "y": 0, "w": 24, "h": 40 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 24, "h": 40 },
+    "sourceSize": { "w": 24, "h": 40 },
+    "duration": 100
+   },
+   {
+    "filename": "running-left-up 1.ase",
+    "frame": { "x": 24, "y": 0, "w": 24, "h": 40 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 24, "h": 40 },
+    "sourceSize": { "w": 24, "h": 40 },
+    "duration": 100
+   },
+   {
+    "filename": "running-left-up 2.ase",
+    "frame": { "x": 48, "y": 0, "w": 24, "h": 40 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 24, "h": 40 },
+    "sourceSize": { "w": 24, "h": 40 },
+    "duration": 100
+   },
+   {
+    "filename": "running-left-up 3.ase",
+    "frame": { "x": 72, "y": 0, "w": 24, "h": 40 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 24, "h": 40 },
+    "sourceSize": { "w": 24, "h": 40 },
+    "duration": 100
+   },
+   {
+    "filename": "running-left-up 4.ase",
+    "frame": { "x": 96, "y": 0, "w": 24, "h": 40 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 24, "h": 40 },
+    "sourceSize": { "w": 24, "h": 40 },
+    "duration": 100
+   },
+   {
+    "filename": "running-left-up 5.ase",
+    "frame": { "x": 120, "y": 0, "w": 24, "h": 40 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 24, "h": 40 },
+    "sourceSize": { "w": 24, "h": 40 },
+    "duration": 100
+   }
+ ],
+ "meta": {
+  "app": "https://github.com/LibreSprite/LibreSprite/",
+  "version": "1.0",
+  "image": "/home/gavin/sprites/running.png",
+  "format": "RGBA8888",
+  "size": { "w": 144, "h": 40 },
+  "scale": "1"
+ }
+}

@@ -1,0 +1,11 @@
+{
+	sprites: [],
+	spritesheet: "resources/spritesheet.png",
+	scene_spritesheets: ["resources/scene1_spritesheet.png"],
+	scenes: [{
+		spritesheet: 0,
+		contents: { type: "Fight" }
+	}],
+	font: "resources/fonts/RobotoMono-Medium.ttf",
+	font_ratio: 1.0
+}

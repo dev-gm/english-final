@@ -332,8 +332,8 @@ module Config = struct
 	let rectangle_config_of_json json : rectangle_config_t = {
 		x = json |> member "x" |> to_int;
 		y = json |> member "y" |> to_int;
-		width = json |> member "width" |> to_int;
-		height = json |> member "height" |> to_int
+		width = json |> member "w" |> to_int;
+		height = json |> member "h" |> to_int
 	}
 
 	let stats_constant_t_of_json json : Sprite.stats_constant_t = {
