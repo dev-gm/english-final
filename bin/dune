@@ -1,6 +1,40 @@
 (executable
- (public_name english_final)
- (name main)
- (libraries english_final raylib yojson)
- (modes byte exe))
+  (public_name english_final)
+  (name main)
+  (modules main)
+  (libraries config render tick raylib yojson)
+  (modes byte exe))
 
+(library
+  (name sprite)
+  (modules sprite)
+  (libraries utils raylib))
+
+(library
+  (name scene)
+  (modules scene)
+  (libraries utils sprite raylib))
+
+(library
+  (name config)
+  (modules config)
+  (libraries game utils sprite scene raylib yojson))
+
+(library
+  (name render)
+  (modules render)
+  (libraries utils sprite scene game raylib))
+
+(library
+  (name tick)
+  (modules tick)
+  (libraries utils sprite scene render game raylib))
+
+(library
+  (name utils)
+  (modules utils))
+
+(library
+  (name game)
+  (modules game)
+  (libraries utils sprite scene raylib))

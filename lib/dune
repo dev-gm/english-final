@@ -1,2 +1,2 @@
 (library
-  (name english_final))
+  (name main))
