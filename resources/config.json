@@ -1,11 +1,108 @@
 {
-	sprites: [],
-	spritesheet: "resources/spritesheet.png",
-	scene_spritesheets: ["resources/scene1_spritesheet.png"],
-	scenes: [{
-		spritesheet: 0,
-		contents: { type: "Fight" }
+	"title": "English Final",
+	"width": 1280,
+	"height": 720,
+	"fps": 60,
+	"sprites": [
+		{
+			"name": "player",
+			"team": 1,
+			"sprite_type": {
+				"type": "Player"
+			},
+			"src_rects": [
+				{
+					"type": "Spritesheet",
+					"Spritesheet": {
+						"use_scene_spritesheet": false,
+						"src_rect": { "x": 0, "y": 0, "w": 24, "h": 34 }
+					}
+				},
+				{
+					"type": "Spritesheet",
+					"Spritesheet": {
+						"use_scene_spritesheet": false,
+						"src_rect": { "x": 24, "y": 0, "w": 14, "h": 34 }
+					}
+				},
+				{
+					"type": "Spritesheet",
+					"Spritesheet": {
+						"use_scene_spritesheet": false,
+						"src_rect": { "x": 38, "y": 0, "w": 24, "h": 34 }
+					}
+				},
+				{
+					"type": "Spritesheet",
+					"Spritesheet": {
+						"use_scene_spritesheet": false,
+						"src_rect": { "x": 62, "y": 0, "w": 24, "h": 34 }
+					}
+				},
+				{
+					"type": "Spritesheet",
+					"Spritesheet": {
+						"use_scene_spritesheet": false,
+						"src_rect": { "x": 86, "y": 0, "w": 14, "h": 34 }
+					}
+				},
+				{
+					"type": "Spritesheet",
+					"Spritesheet": {
+						"use_scene_spritesheet": false,
+						"src_rect": { "x": 100, "y": 0, "w": 24, "h": 34 }
+					}
+				}
+			],
+			"src_rect": 0,
+			"animations": [
+				{
+					"event": "MoveLeft",
+					"indices": [3, 4, 5]
+				},
+				{
+					"event": "MoveRight",
+					"indices": [0, 1, 2]
+				},
+				{
+					"event": "StandingFacingLeft",
+					"indices": [4]
+				},
+				{
+					"event": "StandingFacingRight",
+					"indices": [1]
+				}
+			],
+			"dest_rect": {"x": 0, "y": 0, "w": 100, "h": 100},
+			"visible": true,
+			"z_index": 5,
+			"stats_constants": {
+				"gravity_accel": 15.0,
+				"move_speed": 30.0,
+				"jump_speed": 35.0,
+				"long_attack_speed": 15.0,
+				"long_attack_time": 4,
+				"short_attack_range": 30.0,
+				"dialog_time_until_next_char": 10,
+				"long_attack_energy": 4,
+				"short_attack_energy": 2,
+				"animation_frame_time": 60
+			},
+			"stats_change_on_level": {
+				"long_attack": 3,
+				"short_attack": 2,
+				"health": 10,
+				"energy": 10,
+				"energy_add_countdown": 500
+			}
+		}
+	],
+	"spritesheet": "resources/spritesheet.png",
+	"scene_spritesheets": ["resources/scene1_spritesheet.png"],
+	"scenes": [{
+		"spritesheet": 0,
+		"contents": { "type": "Fight" }
 	}],
-	font: "resources/fonts/RobotoMono-Medium.ttf",
-	font_ratio: 1.0
+	"font": "resources/fonts/RobotoMono-Medium.ttf",
+	"font_ratio": 1.0
 }

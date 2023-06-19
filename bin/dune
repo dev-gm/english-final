@@ -1,9 +1,6 @@
 (executable
  (public_name english_final)
  (name main)
- (libraries english_final raylib yojson))
-
-(env
-  (dev
-    (flags (:standard -w -37 -w -69 -w -27 -w -33))))
+ (libraries english_final raylib yojson)
+ (modes byte exe))
 

@@ -1,0 +1,23 @@
+running-right-left-up:
+- x, y: 0, 0
+- w, h: 24, 34
+
+running-right-standing:
+- x, y: 24, 0
+- w, h: 14, 34
+
+running-right-right-up:
+- x, y: 38, 0
+- w, h: 24, 34
+
+running-left-right-up:
+- x, y: 62, 0
+- w, h: 24, 34
+
+running-left-standing:
+- x, y: 86, 0
+- w, h: 14, 34
+
+running-left-left-up:
+- x, y: 100, 0
+- w, h: 24, 34
