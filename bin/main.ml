@@ -8,6 +8,7 @@ let rec loop (game: Game.t) =
 	match game.should_exit with
 	| true ->
 			Sdlimage.quit ();
+			Sdlttf.quit ();
 			Sdlwindow.destroy game.window;
 			Sdl.quit ();
 	| false ->

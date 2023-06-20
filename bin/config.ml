@@ -209,12 +209,12 @@ let of_json json = {
 	width = json |> member "width" |> to_int;
 	height = json |> member "height" |> to_int;
 	fps = json |> member "fps" |> to_int;
-		spritesheet = json |> member "spritesheet" |> to_string;
+	spritesheet = json |> member "spritesheet" |> to_string;
 	sprites = json |> member "sprites" |> to_list
 		|> List.map sprite_config_of_json;
 	scenes = json |> member "scenes" |> to_list
 		|> List.map scene_config_of_json;
-	font = json |> member "fonts" |> to_string;
+	font = json |> member "font" |> to_string;
 	font_sizes = json |> member "font_sizes" |> to_list
 		|> List.map to_int;
 	font_ratio = json |> member "font_ratio" |> to_float
@@ -311,7 +311,9 @@ let to_game config : Game.t =
 	) config.sprites;
 	let window, renderer = Sdlrender.create_window_and_renderer
 		~width:config.width ~height:config.height ~flags:[] in
+	Sdlwindow.set_title ~window ~title:config.title;
 	Sdlimage.init [`PNG];
+	Sdlttf.init ();
 	let spritesheet =
 		let file = Sdlrwops.from_file
 			~filename:config.spritesheet ~mode:"rb" in
