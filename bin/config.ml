@@ -1,5 +1,5 @@
 open Utils
-open Raylib
+open Sdl
 open Yojson.Basic.Util
 
 type sprite_type_config_t =
@@ -7,14 +7,10 @@ type sprite_type_config_t =
 	| Bot of int (*builtin ai programs*)
 	| Other
 
-type vector2_config_t = { x: int; y: int }
-
-type rectangle_config_t = { x: int; y: int; w: int; h: int }
-
 type src_rect_config_t =
 	| Spritesheet of {
 		use_scene_spritesheet: bool;
-		src_rect: rectangle_config_t
+		src_rect: Rect.t
 	}
 	| Color of { r: int; g: int; b: int; a: int }
 
@@ -30,7 +26,7 @@ type sprite_config_t = {
 	src_rects: src_rect_config_t list;
 	src_rect: int;
 	animations: animation_events_config_t list;
-	dest_rect: rectangle_config_t;
+	dest_rect: Rect.t;
 	visible: bool;
 	z_index: int;
 	stats_constants: Sprite.stats_constant_t;
@@ -44,7 +40,7 @@ type sprite_action_config_t =
 	| StopMoving
 	| Move of bool
 	| Speak of (string * bool option) (*contents, allow_input*)
-	| EnterScene of vector2_config_t
+	| EnterScene of vector_t
 	| Die
 	| ExitScene
 	| NoAction
@@ -90,17 +86,16 @@ let sprite_type_config_of_json json =
 	| "Bot" -> Bot (json |> member "Bot" |> to_int)
 	| _ -> Other
 
-let vector2_config_of_json json : vector2_config_t = {
+let vector_of_json json : vector_t = {
 	x = json |> member "x" |> to_int;
 	y = json |> member "y" |> to_int
 }
 
-let rectangle_config_of_json json : rectangle_config_t = {
-	x = json |> member "x" |> to_int;
-	y = json |> member "y" |> to_int;
-	w = json |> member "w" |> to_int;
-	h = json |> member "h" |> to_int
-}
+let rectangle_of_json json : Rect.t = Rect.make4
+	json |> member "x" |> to_int
+	json |> member "y" |> to_int
+	json |> member "w" |> to_int
+	json |> member "h" |> to_int
 
 let stats_constant_t_of_json json : Sprite.stats_constant_t = {
 	gravity_accel = json |> member "gravity_accel" |> to_float;
@@ -129,7 +124,7 @@ let src_rect_config_of_json json : src_rect_config_t =
 		let spritesheet = json |> member "Spritesheet" in
 		Spritesheet {
 			use_scene_spritesheet = spritesheet |> member "use_scene_spritesheet" |> to_bool;
-			src_rect = spritesheet |> member "src_rect" |> rectangle_config_of_json
+			src_rect = spritesheet |> member "src_rect" |> rectangle_of_json
 		}
 	| _ ->
 		let color = json |> member "Color" in
@@ -168,7 +163,7 @@ let sprite_config_of_json json : sprite_config_t = {
 	src_rect = json |> member "src_rect" |> to_int;
 	animations = json |> member "animations" |> to_list
 		|> List.map animation_events_config_of_json;
-	dest_rect = json |> member "dest_rect" |> rectangle_config_of_json;
+	dest_rect = json |> member "dest_rect" |> rectangle_of_json;
 	visible = json |> member "visible" |> to_bool;
 	z_index = json |> member "z_index" |> to_int;
 	stats_constants = json |> member "stats_constants"
@@ -189,7 +184,7 @@ let sprite_action_config_of_json json : sprite_action_config_t =
 			Speak
 				(speak |> member "contents" |> to_string,
 				speak |> member "allow_input" |> to_bool_option)
-	| "EnterScene" -> EnterScene (json |> member "EnterScene" |> vector2_config_of_json)
+	| "EnterScene" -> EnterScene (json |> member "EnterScene" |> vector_of_json)
 	| "Die" -> Die
 	| "ExitScene" -> ExitScene
 	| _ -> NoAction
@@ -244,19 +239,11 @@ let sprite_type_of_config config game : Sprite.type_t =
 	| Bot _ -> Bot (Game.bot_ai game)
 	| Other -> Other
 
-let vector2_of_config (config: vector2_config_t) = Vector2.create
-	(float_of_int config.x) (float_of_int config.y)
-
-let rectangle_of_config config = Rectangle.create
-	(float_of_int config.x) (float_of_int config.y)
-	(float_of_int config.w) (float_of_int config.h)
-
 let src_rect_of_config config : Sprite.src_rect_t =
 	match config with
 	| Spritesheet { use_scene_spritesheet; src_rect } ->
 		Spritesheet
-			(use_scene_spritesheet,
-			src_rect |> rectangle_of_config)
+			(use_scene_spritesheet, src_rect)
 	| Color color -> Color (Color.create color.r color.g color.b color.a)
 
 let animation_events_of_config (config: animation_events_config_t list)
@@ -278,7 +265,7 @@ let sprite_of_config game config : Sprite.t = {
 	animations = config.animations |> animation_events_of_config;
 	current_animation_event = (StandingFacingRight, 0);
 	animation_frame_left = config.stats_constants.animation_frame_time;
-	dest_rect = rectangle_of_config config.dest_rect;
+	dest_rect = config.dest_rect;
 	long_attack = None;
 	short_attack = None;
 	energy_add_countdown = config.stats_change_on_level.energy_add_countdown;
@@ -304,7 +291,7 @@ let sprite_action_of_config config : Sprite.action_t =
 	| StopMoving -> StopMoving
 	| Move direction -> Move (direction_of_bool direction)
 	| Speak speak -> Speak speak
-	| EnterScene vec -> EnterScene (vector2_of_config vec)
+	| EnterScene vec -> EnterScene (vector_of_config vec)
 	| Die -> Die
 	| ExitScene -> ExitScene
 	| NoAction -> NoAction

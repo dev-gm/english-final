@@ -1,40 +1,40 @@
 (executable
-  (public_name english_final)
   (name main)
   (modules main)
-  (libraries config render tick raylib yojson)
+  (libraries config render tick sdl2 yojson)
   (modes byte exe))
 
 (library
   (name sprite)
   (modules sprite)
-  (libraries utils raylib))
+  (libraries utils sdl2))
 
 (library
   (name scene)
   (modules scene)
-  (libraries utils sprite raylib))
+  (libraries sprite utils sdl2))
 
 (library
   (name config)
   (modules config)
-  (libraries game utils sprite scene raylib yojson))
+  (libraries game utils sprite scene sdl2 yojson))
 
 (library
   (name render)
   (modules render)
-  (libraries utils sprite scene game raylib))
+  (libraries utils sprite scene game sdl2))
 
 (library
   (name tick)
   (modules tick)
-  (libraries utils sprite scene render game raylib))
+  (libraries utils sprite scene render game sdl2))
 
 (library
   (name utils)
-  (modules utils))
+  (modules utils)
+  (libraries sdl2))
 
 (library
   (name game)
   (modules game)
-  (libraries utils sprite scene raylib))
+  (libraries utils sprite scene sdl2))

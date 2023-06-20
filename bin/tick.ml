@@ -1,5 +1,4 @@
 open Utils
-open Raylib
 
 (*
 - animations queue (type, countdown to end): (NO)

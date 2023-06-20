@@ -1,5 +1,4 @@
 open Utils
-open Raylib
 
 type dialog_t = {
 	sprite_name: string;
@@ -11,24 +10,24 @@ type dialog_t = {
 }
 
 type action_t =
-	| ShortAttack of float (*angle*)
+	| ShortAttack of int (*angle, in degrees*)
 	| LongAttack of direction_t
 	| Jump
 	| StopMoving (*only send this if stats.moving = Some*)
 	| Move of direction_t
 	| Speak of (string * bool option) (*contents, allow_input*)
-	| EnterScene of Vector2.t (* Enter is probably a Key *)
+	| EnterScene of vector_t (* Enter is probably a Key *)
 	| Die
 	| ExitScene
 	| NoAction
 
 type stats_constant_t = {
-	gravity_accel: float;
-	move_speed: float;
-	jump_speed: float;
-	long_attack_speed: float;
+	gravity_accel: int;
+	move_speed: int;
+	jump_speed: int;
+	long_attack_speed: int;
 	long_attack_time: int;
-	short_attack_range: float;
+	short_attack_range: int;
 	dialog_time_until_next_char: int;
 	long_attack_energy: int;
 	short_attack_energy: int;
@@ -48,7 +47,7 @@ type stats_change_on_level_t = {
 type stats_t = {
 	constant: stats_constant_t;
 	change_on_level: stats_change_on_level_t;
-	mutable velocity: Vector2.t; (* every tick it is modified based on angle, accel, air_resistance. then position is moved by velocity *)
+	mutable velocity: vector_t; (* every tick it is modified based on angle, accel, air_resistance. then position is moved by velocity *)
 	mutable jump_quota: int; (* decrease by 1 during jump. can't jump if is less than or equal to 0. when collide with ground reset to 2 *)
 	mutable energy: int; (* attacks decrease this. short attack decrease it in a small way. long attacks more. replenished by a certain amount every tick*)
 	mutable health: int;
@@ -61,8 +60,8 @@ type type_t =
 	| Other
 
 type src_rect_t =
-	| Spritesheet of bool * Rectangle.t (*use_scene_spritesheet, src_rect*)
-	| Color of Color.t
+	| Spritesheet of bool * Sdl.Rect.t (*use_scene_spritesheet, src_rect*)
+	| Color of color_t
 
 type animation_event_t =
 	| ShortAttackLeft
@@ -85,13 +84,14 @@ type t = {
 	animations: (animation_event_t, int Array.t) Hashtbl.t;
 	mutable current_animation_event: animation_event_t * int; (*current animation event, current animation index*)
 	mutable animation_frame_left: int;
-	dest_rect: Rectangle.t;
+	mutable dest_rect: Sdl.Rect.t;
 	mutable long_attack: (direction_t * int) option; (* long attack, don't allow inputs while this is happening. during it the player is invincible, and they pass through any player (not other) on either side, dealing damage. this means that if the player collides with any bot while long attacking, that bot takes damage for the duration of the long attack. int counts down until it gets to 0, at which point long attack stops. during the entirety of the long attack, player moves at long_attack_speed in 'direction' direction *)
-	mutable short_attack: float option; (*angle. next tick, short_attack is reset to None*)
+	mutable short_attack: int option; (*angle. next tick, short_attack is reset to None*)
 	mutable energy_add_countdown: int; (*ticks*)
 	mutable dialog: dialog_t option;
 	mutable visible: bool;
 	mutable dead: bool;
+	sprites_can_collide: bool; (*if sprites can collide with it. Other (floors, etc) will usually say yes. if Player or Bot don't want collision, then they can say no*)
 	z_index: int;
 	stats: stats_t
 }
@@ -108,10 +108,9 @@ let send_action sprite action =
 				sprite.stats.energy <- sprite.stats.energy -
 					sprite.stats.constant.short_attack_energy;
 				sprite.current_animation_event <-
-					let f a b = (a *. Float.pi) /. b in
-					if angle > (f 2. 3.) && angle < (f 3. 2.) then
+					if angle > 120 && angle < 270 then
 						(ShortAttackLeft, 0)
-					else if angle > (f 3. 2.) && angle < (f 1. 3.) then
+					else if angle > 270 && angle < 60 then
 						(ShortAttackRight, 0)
 					else
 						(ShortAttackUp, 0)
@@ -130,30 +129,29 @@ let send_action sprite action =
 						| Right -> LongAttackRight), 0)
 	| Jump ->
 			if sprite.stats.jump_quota > 0 then
-				Vector2.set_y sprite.stats.velocity
-					sprite.stats.constant.jump_speed;
+				sprite.stats.velocity.y <- sprite.stats.constant.jump_speed;
 				sprite.stats.jump_quota <-
 					sprite.stats.jump_quota - 1;
-				if (sprite.stats.velocity |> Vector2.x |> abs_float) < 20. then
+				if (sprite.stats.velocity.x |> abs) < 20 then
 					sprite.current_animation_event <- (MovingUp, 0)
 	| Move direction ->
-			let speed = sprite.stats.constant.move_speed *.
+			let speed = sprite.stats.constant.move_speed *
 				(match direction with
-					| Left -> -1.
-					| Right -> 1.)
+					| Left -> -1
+					| Right -> 1)
 			in
-			Vector2.set_x sprite.stats.velocity speed;
+			sprite.stats.velocity.x <- speed;
 			sprite.current_animation_event <-
 				((match direction with
 					| Left -> MovingLeft
 					| Right -> MovingRight), 0)
 	| StopMoving ->
 			sprite.current_animation_event <-
-				((if (Vector2.x sprite.stats.velocity) < 0. then
+				((if (sprite.stats.velocity.x) < 0 then
 					StandingFacingLeft
 				else
 					StandingFacingRight), 0);
-			Vector2.set_x sprite.stats.velocity 0.;
+			sprite.stats.velocity.x <- 0;
 	| Speak (contents, allow_input_option) ->
 			let dialog = {
 				sprite_name = sprite.name;
@@ -169,8 +167,8 @@ let send_action sprite action =
 						| None -> true)
 			} in sprite.dialog <- Some dialog
 	| EnterScene start_pos ->
-			Rectangle.set_x sprite.dest_rect (Vector2.x start_pos);
-			Rectangle.set_y sprite.dest_rect (Vector2.y start_pos);
+			sprite.dest_rect <-
+				{ sprite.dest_rect with x = start_pos.x; y = start_pos.y };
 			sprite.visible <- true;
 			if sprite.dead then
 				sprite.dead <- false
@@ -183,8 +181,8 @@ let send_action sprite action =
 				sprite.stats.change_on_level.health;
 			sprite.stats.energy <-
 				sprite.stats.change_on_level.energy;
-			Vector2.set_x sprite.stats.velocity 0.;
-			Vector2.set_y sprite.stats.velocity 0.;
+			sprite.stats.velocity.x <- 0;
+			sprite.stats.velocity.y <- 0
 	| NoAction -> ();
 	let (new_animation, _) = sprite.current_animation_event in
 	if old_animation <> new_animation then
@@ -193,80 +191,142 @@ let send_action sprite action =
 (*angle IS IN RADIANS, unit circle*)
 let find_closest_enemy_in_direction_and_range
 	(sprite: t)
-	(angle: float)
-	(range: float)
+	(angle: int)
+	(range: int)
 	(sprites: t Array.t)
 	: t option
 =
-	let center =
-		let open Rectangle in
-		let f f1 f2 = (f1 sprite.dest_rect) +. ((f2 sprite.dest_rect) /. 2.) in
-		Vector2.create (f x width) (f y height)
-	in
-	let vector_end =
-		let f f1 t1 = (f1 center) +. (range *. (t1 angle)) in
-		let open Vector2 in create (f x cos) (f y sin)
-	in
+	let center: vector_t = {
+		x = (sprite.dest_rect.x + sprite.dest_rect.w) / 2;
+		y = (sprite.dest_rect.y + sprite.dest_rect.h) / 2
+	} in
+	let vector_end: vector_t = {
+		x = center.x + ((float_of_int range) *.
+			(cos (radian_of_degree angle)) |> int_of_float);
+		y = center.y + ((float_of_int range) *.
+			(sin (radian_of_degree angle)) |> int_of_float)
+	} in
 	let i = ref 0 in
 	Array.get (Array.fold_left
 		(fun filtered sprite ->
-			let line_between_points vf rf =
-				(((vf center) < (rf sprite.dest_rect)) &&
-				((vf vector_end) > (rf sprite.dest_rect))) ||
-				(((vf center) > (rf sprite.dest_rect)) &&
-				((vf vector_end) < (rf sprite.dest_rect)))
+			let intersection =
+				Sdl.Rect.intersect_rect_and_line
+					~rect:sprite.dest_rect
+					~p1:(tuple_of_vector center)
+					~p2:(tuple_of_vector vector_end)
 			in
-			if (line_between_points Vector2.x Rectangle.x) &&
-				(line_between_points Vector2.y Rectangle.y)
-			then
+			if Option.is_some intersection then
 				Array.unsafe_set filtered !i (Some sprite);
 				i := !i + 1;
 			filtered
 		) (Array.make ((Array.length sprites) + 1) None) sprites) 0
 
-let correct_movement_for_collision rect other_rect (mvmt: Vector2.t) =
-	let open Rectangle in
-	let in_between_points vf rf1 rf2 =
-		let a = ((rf1 rect) +. (vf mvmt)) -. (rf1 other_rect) in
-		let b = ((rf1 other_rect) +. (rf2 other_rect)) -.
-			((rf1 rect) +. (rf2 rect) +. (vf mvmt))
-		in (a, b)
+let correct_movement_for_collision (a: Sdl.Rect.t) (b: Sdl.Rect.t) (mvmt: vector_t) =
+	let bounds: Sdl.Rect.t =
+		let f s v m = [s; s + v; s + m; s + m + v] in
+		let (x_values, y_values) = (f a.x a.w mvmt.x, f a.y a.h mvmt.y) in
+		{
+			x = min_int_list x_values;
+			y = min_int_list y_values;
+			w = max_int_list x_values;
+			h = max_int_list y_values
+		}
 	in
-	let (left_over, right_over) = in_between_points Vector2.x x width in
-	let (top_over, bottom_over) = in_between_points Vector2.y y height in
-	if (left_over > 0. && right_over > 0. &&
-		top_over > 0. && bottom_over > 0.) then
-		(Vector2.create
-			(if (left_over > right_over) then
-				(Vector2.x mvmt) -. left_over
-			else
-				(Vector2.x mvmt) +. right_over)
-			(if (top_over > bottom_over) then
-				(Vector2.y mvmt) -. top_over
-			else
-				(Vector2.y mvmt) +. bottom_over),
-		true)
+	let in_path = 
+		if Sdl.Rect.has_intersection ~a:bounds ~b:b then
+			let four_corners (r: Sdl.Rect.t) =
+				List.map (fun a ->
+					List.map (fun b ->
+						(float_of_int a, float_of_int b)
+					) [r.y; r.y + r.h]
+				) [r.x; r.x + r.w]
+					|> List.flatten
+			in
+			List.exists2 (fun (x1, y1) (x2, y2) ->
+				List.exists (fun x3 ->
+					let x3 = float_of_int x3 in
+					let y_intersect =
+						(((x3 -. x1) *. (y2 -. y1)) /. (x2 -. x1)) +. y1
+							|> int_of_float
+					in y_intersect > b.y && y_intersect < (b.y + b.h)
+				) [b.x; b.x + b.w] ||
+				List.exists (fun y3 ->
+					let y3 = float_of_int y3 in
+					let x_intersect =
+						(((x2 -. x1) *. (y3 -. y1)) /. (y2 -. y1)) +. x1
+							|> int_of_float
+					in x_intersect > b.x && x_intersect < (b.x + b.w)
+				) [b.y; b.y + b.h]
+			) (four_corners a) (four_corners (rect_add_vector a mvmt))
+		else false
+	in
+	if in_path then
+		((if (abs mvmt.x) > (abs mvmt.y) then
+			let x =
+				if mvmt.x > 0 then
+					b.x - (a.x + a.w)
+				else if mvmt.x < 0 then
+					(b.x + b.w) - a.x
+				else
+					a.x
+			in
+			let y =
+				let slope =
+					(float_of_int mvmt.y) /. (float_of_int mvmt.x) in
+				if slope > 0. then
+					(slope *. (x - a.x |> float_of_int) |> int_of_float) + a.h
+				else if slope < 0. then
+					slope *. (x - a.x |> float_of_int) |> int_of_float
+				else
+					a.y
+			in { x; y }
+		else
+			let y =
+				if mvmt.y > 0 then
+					b.y - (a.y + a.h)
+				else if mvmt.y < 0 then
+					(b.y + b.h) - a.y
+				else
+					a.y
+			in
+			let x =
+				if mvmt.x = 0 then
+					a.x
+				else
+					let slope =
+						(float_of_int mvmt.y) /. (float_of_int mvmt.x) in
+					if slope > 0. then
+						((y - a.h |> float_of_int) /. slope |> int_of_float) + a.x
+					else if slope < 0. then
+						((float_of_int y) /. slope |> int_of_float) + a.x
+					else
+						a.x;
+			in { x; y }), true)
 	else
 		(mvmt, false)
 
+
 (* returns: new_movement, collided_with_ground(or any Other sprite in a downwards direction) *)
-let correct_movement_for_collisions sprite movement sprites : Vector2.t * bool =
-	Array.fold_right (fun other_sprite (movement, collide_with_ground) ->
-		let (new_movement, _) = correct_movement_for_collision
-			sprite.dest_rect other_sprite.dest_rect movement in
-		let collide_with_ground = collide_with_ground ||
-			(((Vector2.y new_movement) < (Vector2.y movement)) &&
-			other_sprite.sprite_type = Other) in
-		(new_movement, collide_with_ground)
-	) sprites (movement, false)
+let correct_movement_for_collisions sprite movement sprites : vector_t * bool =
+	Array.fold_left (fun (movement, collide_with_ground) other_sprite ->
+		if other_sprite.sprites_can_collide then
+			let (new_movement, _) = correct_movement_for_collision
+				sprite.dest_rect other_sprite.dest_rect movement in
+			let collide_with_ground = collide_with_ground ||
+				((new_movement.y < movement.y) &&
+				(other_sprite.sprite_type = Other)) in
+			(new_movement, collide_with_ground)
+		else
+			(movement, collide_with_ground)
+	) (movement, false) sprites
 
 let correct_movement_for_long_attack_collisions
 	(sprite: t)
-	(movement: Vector2.t)
+	(movement: vector_t)
 	(sprites: t Array.t)
-	: Vector2.t * t list
+	: vector_t * t list
 =
-	Array.fold_right (fun other_sprite (movement, enemies) ->
+	Array.fold_left (fun (movement, enemies) other_sprite ->
 		let (new_movement, corrected) = correct_movement_for_collision
 			sprite.dest_rect other_sprite.dest_rect movement in
 		if corrected then
@@ -276,5 +336,5 @@ let correct_movement_for_long_attack_collisions
 			| _ -> (new_movement, enemies)
 		else
 			(movement, enemies)
-	) sprites (movement, [])
+	) (movement, []) sprites
 

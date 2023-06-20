@@ -1,5 +1,3 @@
-open Raylib
-
 let setup () =
 	init_window 1280 720 "";
 	let game = Array.get Sys.argv 1

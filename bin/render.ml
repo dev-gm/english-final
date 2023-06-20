@@ -1,5 +1,3 @@
-open Raylib
-
 let text_box bg_color text_color text x y width font_size font font_ratio =
 	let line_max_length = (width /. (font_size *. font_ratio))
 		|> int_of_float in
