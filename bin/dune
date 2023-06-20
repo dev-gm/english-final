@@ -3,38 +3,3 @@
   (modules main)
   (libraries config render tick sdl2 yojson)
   (modes byte exe))
-
-(library
-  (name sprite)
-  (modules sprite)
-  (libraries utils sdl2 sdl2_ttf))
-
-(library
-  (name scene)
-  (modules scene)
-  (libraries sprite utils sdl2))
-
-(library
-  (name config)
-  (modules config)
-  (libraries sprite scene game utils sdl2 sdl2_ttf sdl2_img yojson))
-
-(library
-  (name render)
-  (modules render)
-  (libraries sprite scene game utils sdl2))
-
-(library
-  (name tick)
-  (modules tick)
-  (libraries sprite scene render game utils sdl2))
-
-(library
-  (name utils)
-  (modules utils)
-  (libraries sdl2 sdl2_ttf))
-
-(library
-  (name game)
-  (modules game)
-  (libraries sprite scene utils sdl2 sdl2_ttf))
