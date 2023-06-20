@@ -7,7 +7,7 @@
 (library
   (name sprite)
   (modules sprite)
-  (libraries utils sdl2))
+  (libraries utils sdl2 sdl2_ttf))
 
 (library
   (name scene)
@@ -17,24 +17,24 @@
 (library
   (name config)
   (modules config)
-  (libraries game utils sprite scene sdl2 yojson))
+  (libraries sprite scene game utils sdl2 sdl2_ttf sdl2_img yojson))
 
 (library
   (name render)
   (modules render)
-  (libraries utils sprite scene game sdl2))
+  (libraries sprite scene game utils sdl2))
 
 (library
   (name tick)
   (modules tick)
-  (libraries utils sprite scene render game sdl2))
+  (libraries sprite scene render game utils sdl2))
 
 (library
   (name utils)
   (modules utils)
-  (libraries sdl2))
+  (libraries sdl2 sdl2_ttf))
 
 (library
   (name game)
   (modules game)
-  (libraries utils sprite scene sdl2))
+  (libraries sprite scene utils sdl2 sdl2_ttf))

@@ -1,5 +1,4 @@
 open Utils
-open Sdl
 open Yojson.Basic.Util
 
 type sprite_type_config_t =
@@ -8,11 +7,8 @@ type sprite_type_config_t =
 	| Other
 
 type src_rect_config_t =
-	| Spritesheet of {
-		use_scene_spritesheet: bool;
-		src_rect: Rect.t
-	}
-	| Color of { r: int; g: int; b: int; a: int }
+	| Spritesheet of Sdlrect.t
+	| Color of Color.t
 
 type animation_events_config_t = {
 	event: Sprite.animation_event_t;
@@ -26,21 +22,22 @@ type sprite_config_t = {
 	src_rects: src_rect_config_t list;
 	src_rect: int;
 	animations: animation_events_config_t list;
-	dest_rect: Rect.t;
+	dest_rect: Sdlrect.t;
 	visible: bool;
+	sprites_can_collide: bool;
 	z_index: int;
 	stats_constants: Sprite.stats_constant_t;
 	stats_change_on_level: Sprite.stats_change_on_level_t
 }
 
 type sprite_action_config_t =
-	| ShortAttack of float
+	| ShortAttack of int
 	| LongAttack of bool (*true=right, false=left*)
 	| Jump
 	| StopMoving
 	| Move of bool
 	| Speak of (string * bool option) (*contents, allow_input*)
-	| EnterScene of vector_t
+	| EnterScene of Vector.t
 	| Die
 	| ExitScene
 	| NoAction
@@ -60,7 +57,6 @@ type scene_contents_config_t =
 	| Fight
 
 type scene_config_t = {
-	spritesheet: int;
 	contents: scene_contents_config_t;
 	next_scene: int option
 }
@@ -72,9 +68,9 @@ type t = {
 	fps: int;
 	sprites: sprite_config_t list;
 	spritesheet: string;
-	scene_spritesheets: string list;
 	scenes: scene_config_t list; (* first scene is index 0 *)
 	font: string;
+	font_sizes: int list;
 	font_ratio: float
 }
 
@@ -86,24 +82,24 @@ let sprite_type_config_of_json json =
 	| "Bot" -> Bot (json |> member "Bot" |> to_int)
 	| _ -> Other
 
-let vector_of_json json : vector_t = {
+let vector_of_json json : Vector.t = {
 	x = json |> member "x" |> to_int;
 	y = json |> member "y" |> to_int
 }
 
-let rectangle_of_json json : Rect.t = Rect.make4
-	json |> member "x" |> to_int
-	json |> member "y" |> to_int
-	json |> member "w" |> to_int
-	json |> member "h" |> to_int
+let rectangle_of_json json : Sdlrect.t = Sdlrect.make4
+	~x:(json |> member "x" |> to_int)
+	~y:(json |> member "y" |> to_int)
+	~w:(json |> member "w" |> to_int)
+	~h:(json |> member "h" |> to_int)
 
 let stats_constant_t_of_json json : Sprite.stats_constant_t = {
-	gravity_accel = json |> member "gravity_accel" |> to_float;
-	move_speed = json |> member "move_speed" |> to_float;
-	jump_speed = json |> member "jump_speed" |> to_float;
-	long_attack_speed = json |> member "long_attack_speed" |> to_float;
+	gravity_accel = json |> member "gravity_accel" |> to_int;
+	move_speed = json |> member "move_speed" |> to_int;
+	jump_speed = json |> member "jump_speed" |> to_int;
+	long_attack_speed = json |> member "long_attack_speed" |> to_int;
 	long_attack_time = json |> member "long_attack_time" |> to_int;
-	short_attack_range = json |> member "short_attack_range" |> to_float;
+	short_attack_range = json |> member "short_attack_range" |> to_int;
 	dialog_time_until_next_char = json |> member "dialog_time_until_next_char" |> to_int;
 	long_attack_energy = json |> member "long_attack_energy" |> to_int;
 	short_attack_energy = json |> member "short_attack_energy" |> to_int;
@@ -120,12 +116,7 @@ let stats_change_on_level_t_of_json json : Sprite.stats_change_on_level_t = {
 
 let src_rect_config_of_json json : src_rect_config_t =
 	match json |> member "type" |> to_string with
-	| "Spritesheet" ->
-		let spritesheet = json |> member "Spritesheet" in
-		Spritesheet {
-			use_scene_spritesheet = spritesheet |> member "use_scene_spritesheet" |> to_bool;
-			src_rect = spritesheet |> member "src_rect" |> rectangle_of_json
-		}
+	| "Spritesheet" -> Spritesheet (json |> member "Spritesheet" |> rectangle_of_json)
 	| _ ->
 		let color = json |> member "Color" in
 		let f s = color |> member s |> to_int in
@@ -145,13 +136,9 @@ let animation_event_config_of_json json
 	| "StandingFacingRight" -> StandingFacingRight
 	| _ -> StandingFacingLeft
 
-let animation_events_config_of_json json
-	: animation_events_config_t
-= {
-	event = json |> member "event"
-		|> animation_event_config_of_json;
-	indices = json |> member "indices"
-		|> to_list |> filter_int
+let animation_events_config_of_json json : animation_events_config_t = {
+	event = json |> member "event" |> animation_event_config_of_json;
+	indices = json |> member "indices" |> to_list |> List.map to_int
 }
 
 let sprite_config_of_json json : sprite_config_t = {
@@ -165,6 +152,7 @@ let sprite_config_of_json json : sprite_config_t = {
 		|> List.map animation_events_config_of_json;
 	dest_rect = json |> member "dest_rect" |> rectangle_of_json;
 	visible = json |> member "visible" |> to_bool;
+	sprites_can_collide = json |> member "sprites_can_collide" |> to_bool;
 	z_index = json |> member "z_index" |> to_int;
 	stats_constants = json |> member "stats_constants"
 		|> stats_constant_t_of_json;
@@ -174,7 +162,7 @@ let sprite_config_of_json json : sprite_config_t = {
 
 let sprite_action_config_of_json json : sprite_action_config_t =
 	match json |> member "type" |> to_string with
-	| "ShortAttack" -> ShortAttack (json |> member "ShortAttack" |> to_float)
+	| "ShortAttack" -> ShortAttack (json |> member "ShortAttack" |> to_int)
 	| "LongAttack" -> LongAttack (json |> member "LongAttack" |> to_bool)
 	| "Jump" -> Jump
 	| "StopMoving" -> StopMoving
@@ -211,7 +199,6 @@ let scene_contents_config_of_json json : scene_contents_config_t =
 	| _ -> Fight
 
 let scene_config_of_json json : scene_config_t = {
-	spritesheet = json |> member "spritesheet" |> to_int;
 	contents = json |> member "contents"
 		|> scene_contents_config_of_json;
 	next_scene = json |> member "next_scene" |> to_int_option
@@ -222,14 +209,14 @@ let of_json json = {
 	width = json |> member "width" |> to_int;
 	height = json |> member "height" |> to_int;
 	fps = json |> member "fps" |> to_int;
+		spritesheet = json |> member "spritesheet" |> to_string;
 	sprites = json |> member "sprites" |> to_list
 		|> List.map sprite_config_of_json;
-	spritesheet = json |> member "spritesheet" |> to_string;
-	scene_spritesheets = json |> member "scene_spritesheets"
-		|> to_list |> List.map to_string;
 	scenes = json |> member "scenes" |> to_list
 		|> List.map scene_config_of_json;
-	font = json |> member "font" |> to_string;
+	font = json |> member "fonts" |> to_string;
+	font_sizes = json |> member "font_sizes" |> to_list
+		|> List.map to_int;
 	font_ratio = json |> member "font_ratio" |> to_float
 }
 
@@ -241,10 +228,8 @@ let sprite_type_of_config config game : Sprite.type_t =
 
 let src_rect_of_config config : Sprite.src_rect_t =
 	match config with
-	| Spritesheet { use_scene_spritesheet; src_rect } ->
-		Spritesheet
-			(use_scene_spritesheet, src_rect)
-	| Color color -> Color (Color.create color.r color.g color.b color.a)
+	| Spritesheet src_rect -> Spritesheet src_rect
+	| Color color -> Color color
 
 let animation_events_of_config (config: animation_events_config_t list)
 	: (Sprite.animation_event_t, int Array.t) Hashtbl.t
@@ -272,11 +257,12 @@ let sprite_of_config game config : Sprite.t = {
 	dialog = None;
 	visible = config.visible;
 	dead = false;
+	sprites_can_collide = config.sprites_can_collide;
 	z_index = config.z_index;
 	stats = {
 		constant = config.stats_constants;
 		change_on_level = config.stats_change_on_level;
-		velocity = Vector2.create 0. 0.;
+		velocity = { x = 0; y = 0 };
 		jump_quota = 2;
 		energy = config.stats_change_on_level.energy;
 		health = config.stats_change_on_level.health;
@@ -291,7 +277,7 @@ let sprite_action_of_config config : Sprite.action_t =
 	| StopMoving -> StopMoving
 	| Move direction -> Move (direction_of_bool direction)
 	| Speak speak -> Speak speak
-	| EnterScene vec -> EnterScene (vector_of_config vec)
+	| EnterScene vec -> EnterScene vec
 	| Die -> Die
 	| ExitScene -> ExitScene
 	| NoAction -> NoAction
@@ -313,39 +299,55 @@ let scene_contents_of_config config : Scene.contents_t =
 	| Fight -> Fight
 
 let scene_of_config (config: scene_config_t) : Scene.t = {
-	spritesheet = config.spritesheet;
 	contents = scene_contents_of_config config.contents;
 	next_scene = config.next_scene
 }
 
 let to_game config : Game.t =
+	Sdl.init [`VIDEO; `TIMER];
 	let sprite_names = Hashtbl.create (List.length config.sprites) in
 	List.iteri (fun i sprite ->
 		Hashtbl.add sprite_names sprite.name i
 	) config.sprites;
+	let window, renderer = Sdlrender.create_window_and_renderer
+		~width:config.width ~height:config.height ~flags:[] in
+	Sdlimage.init [`PNG];
+	let spritesheet =
+		let file = Sdlrwops.from_file
+			~filename:config.spritesheet ~mode:"rb" in
+		let surface = Sdlimage.load_png_rw file in
+		let texture = Sdltexture.create_from_surface renderer surface in
+		Sdlrwops.free file;
+		Sdlsurface.free surface;
+		texture
+	in
 	let game: Game.t = {
 		title = config.title;
 		width = config.width;
 		height = config.height;
 		fps = config.fps;
-		time_per_frame = 1. /. (float_of_int config.fps);
+		ms_per_frame = 1000. /. (float_of_int config.fps) |> int_of_float;
+		window;
+		renderer;
+		spritesheet;
 		tick = 0;
 		scene_tick = 0;
 		switch_scene = false;
 		should_exit = false;
 		sprites = Array.of_list [];
 		sprite_names;
-		spritesheet = load_texture config.spritesheet;
-		scene_spritesheets = config.scene_spritesheets
-			|> Array.of_list
-			|> Array.map load_texture;
 		scenes = config.scenes
 			|> Array.of_list
 			|> Array.map scene_of_config;
 		current_scene = 0;
+		fonts = config.font_sizes |>
+			List.fold_left (fun hashtbl font_size ->
+				Hashtbl.add hashtbl font_size
+					(Sdlttf.open_font ~file:config.font ~ptsize:font_size);
+				hashtbl
+			) (Hashtbl.create (List.length config.font_sizes));
+		font_ratio = config.font_ratio;
 		dialogs = [];
-		font = load_font config.font;
-		font_ratio = config.font_ratio
 	} in
 	game.sprites <- config.sprites
 		|> Array.of_list 

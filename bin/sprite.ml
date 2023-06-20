@@ -16,7 +16,7 @@ type action_t =
 	| StopMoving (*only send this if stats.moving = Some*)
 	| Move of direction_t
 	| Speak of (string * bool option) (*contents, allow_input*)
-	| EnterScene of vector_t (* Enter is probably a Key *)
+	| EnterScene of Vector.t (* Enter is probably a Key *)
 	| Die
 	| ExitScene
 	| NoAction
@@ -47,7 +47,7 @@ type stats_change_on_level_t = {
 type stats_t = {
 	constant: stats_constant_t;
 	change_on_level: stats_change_on_level_t;
-	mutable velocity: vector_t; (* every tick it is modified based on angle, accel, air_resistance. then position is moved by velocity *)
+	mutable velocity: Vector.t; (* every tick it is modified based on angle, accel, air_resistance. then position is moved by velocity *)
 	mutable jump_quota: int; (* decrease by 1 during jump. can't jump if is less than or equal to 0. when collide with ground reset to 2 *)
 	mutable energy: int; (* attacks decrease this. short attack decrease it in a small way. long attacks more. replenished by a certain amount every tick*)
 	mutable health: int;
@@ -60,8 +60,8 @@ type type_t =
 	| Other
 
 type src_rect_t =
-	| Spritesheet of bool * Sdl.Rect.t (*use_scene_spritesheet, src_rect*)
-	| Color of color_t
+	| Spritesheet of Sdlrect.t
+	| Color of Color.t
 
 type animation_event_t =
 	| ShortAttackLeft
@@ -84,7 +84,7 @@ type t = {
 	animations: (animation_event_t, int Array.t) Hashtbl.t;
 	mutable current_animation_event: animation_event_t * int; (*current animation event, current animation index*)
 	mutable animation_frame_left: int;
-	mutable dest_rect: Sdl.Rect.t;
+	mutable dest_rect: Sdlrect.t;
 	mutable long_attack: (direction_t * int) option; (* long attack, don't allow inputs while this is happening. during it the player is invincible, and they pass through any player (not other) on either side, dealing damage. this means that if the player collides with any bot while long attacking, that bot takes damage for the duration of the long attack. int counts down until it gets to 0, at which point long attack stops. during the entirety of the long attack, player moves at long_attack_speed in 'direction' direction *)
 	mutable short_attack: int option; (*angle. next tick, short_attack is reset to None*)
 	mutable energy_add_countdown: int; (*ticks*)
@@ -196,11 +196,11 @@ let find_closest_enemy_in_direction_and_range
 	(sprites: t Array.t)
 	: t option
 =
-	let center: vector_t = {
+	let center: Vector.t = {
 		x = (sprite.dest_rect.x + sprite.dest_rect.w) / 2;
 		y = (sprite.dest_rect.y + sprite.dest_rect.h) / 2
 	} in
-	let vector_end: vector_t = {
+	let vector_end: Vector.t = {
 		x = center.x + ((float_of_int range) *.
 			(cos (radian_of_degree angle)) |> int_of_float);
 		y = center.y + ((float_of_int range) *.
@@ -210,10 +210,10 @@ let find_closest_enemy_in_direction_and_range
 	Array.get (Array.fold_left
 		(fun filtered sprite ->
 			let intersection =
-				Sdl.Rect.intersect_rect_and_line
+				Sdlrect.intersect_rect_and_line
 					~rect:sprite.dest_rect
-					~p1:(tuple_of_vector center)
-					~p2:(tuple_of_vector vector_end)
+					~p1:(Vector.to_tuple center)
+					~p2:(Vector.to_tuple vector_end)
 			in
 			if Option.is_some intersection then
 				Array.unsafe_set filtered !i (Some sprite);
@@ -221,8 +221,11 @@ let find_closest_enemy_in_direction_and_range
 			filtered
 		) (Array.make ((Array.length sprites) + 1) None) sprites) 0
 
-let correct_movement_for_collision (a: Sdl.Rect.t) (b: Sdl.Rect.t) (mvmt: vector_t) =
-	let bounds: Sdl.Rect.t =
+let correct_movement_for_collision
+	(a: Sdlrect.t) (b: Sdlrect.t) (mvmt: Vector.t)
+	: Vector.t * bool
+=
+	let bounds: Sdlrect.t =
 		let f s v m = [s; s + v; s + m; s + m + v] in
 		let (x_values, y_values) = (f a.x a.w mvmt.x, f a.y a.h mvmt.y) in
 		{
@@ -233,8 +236,8 @@ let correct_movement_for_collision (a: Sdl.Rect.t) (b: Sdl.Rect.t) (mvmt: vector
 		}
 	in
 	let in_path = 
-		if Sdl.Rect.has_intersection ~a:bounds ~b:b then
-			let four_corners (r: Sdl.Rect.t) =
+		if Sdlrect.has_intersection ~a:bounds ~b:b then
+			let four_corners (r: Sdlrect.t) =
 				List.map (fun a ->
 					List.map (fun b ->
 						(float_of_int a, float_of_int b)
@@ -257,7 +260,7 @@ let correct_movement_for_collision (a: Sdl.Rect.t) (b: Sdl.Rect.t) (mvmt: vector
 							|> int_of_float
 					in x_intersect > b.x && x_intersect < (b.x + b.w)
 				) [b.y; b.y + b.h]
-			) (four_corners a) (four_corners (rect_add_vector a mvmt))
+			) (four_corners a) (four_corners (Vector.rect_add a mvmt))
 		else false
 	in
 	if in_path then
@@ -307,7 +310,7 @@ let correct_movement_for_collision (a: Sdl.Rect.t) (b: Sdl.Rect.t) (mvmt: vector
 
 
 (* returns: new_movement, collided_with_ground(or any Other sprite in a downwards direction) *)
-let correct_movement_for_collisions sprite movement sprites : vector_t * bool =
+let correct_movement_for_collisions sprite movement sprites : Vector.t * bool =
 	Array.fold_left (fun (movement, collide_with_ground) other_sprite ->
 		if other_sprite.sprites_can_collide then
 			let (new_movement, _) = correct_movement_for_collision
@@ -322,9 +325,9 @@ let correct_movement_for_collisions sprite movement sprites : vector_t * bool =
 
 let correct_movement_for_long_attack_collisions
 	(sprite: t)
-	(movement: vector_t)
+	(movement: Vector.t)
 	(sprites: t Array.t)
-	: vector_t * t list
+	: Vector.t * t list
 =
 	Array.fold_left (fun (movement, enemies) other_sprite ->
 		let (new_movement, corrected) = correct_movement_for_collision

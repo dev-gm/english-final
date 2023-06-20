@@ -13,55 +13,37 @@
 			"src_rects": [
 				{
 					"type": "Spritesheet",
-					"Spritesheet": {
-						"use_scene_spritesheet": false,
-						"src_rect": { "x": 0, "y": 0, "w": 24, "h": 34 }
-					}
+					"Spritesheet": { "x": 0, "y": 0, "w": 24, "h": 34 }
 				},
 				{
 					"type": "Spritesheet",
-					"Spritesheet": {
-						"use_scene_spritesheet": false,
-						"src_rect": { "x": 24, "y": 0, "w": 14, "h": 34 }
-					}
+					"Spritesheet":  { "x": 24, "y": 0, "w": 14, "h": 34 }
 				},
 				{
 					"type": "Spritesheet",
-					"Spritesheet": {
-						"use_scene_spritesheet": false,
-						"src_rect": { "x": 38, "y": 0, "w": 24, "h": 34 }
-					}
+					"Spritesheet": { "x": 38, "y": 0, "w": 24, "h": 34 }
 				},
 				{
 					"type": "Spritesheet",
-					"Spritesheet": {
-						"use_scene_spritesheet": false,
-						"src_rect": { "x": 62, "y": 0, "w": 24, "h": 34 }
-					}
+					"Spritesheet": { "x": 62, "y": 0, "w": 24, "h": 34 }
 				},
 				{
 					"type": "Spritesheet",
-					"Spritesheet": {
-						"use_scene_spritesheet": false,
-						"src_rect": { "x": 86, "y": 0, "w": 14, "h": 34 }
-					}
+					"Spritesheet": { "x": 86, "y": 0, "w": 14, "h": 34 }
 				},
 				{
 					"type": "Spritesheet",
-					"Spritesheet": {
-						"use_scene_spritesheet": false,
-						"src_rect": { "x": 100, "y": 0, "w": 24, "h": 34 }
-					}
+					"Spritesheet": { "x": 100, "y": 0, "w": 24, "h": 34 }
 				}
 			],
 			"src_rect": 0,
 			"animations": [
 				{
-					"event": "MoveLeft",
+					"event": "MovingLeft",
 					"indices": [3, 4, 5]
 				},
 				{
-					"event": "MoveRight",
+					"event": "MovingRight",
 					"indices": [0, 1, 2]
 				},
 				{
@@ -75,14 +57,15 @@
 			],
 			"dest_rect": {"x": 0, "y": 0, "w": 100, "h": 100},
 			"visible": true,
+			"sprites_can_collide": true,
 			"z_index": 5,
 			"stats_constants": {
-				"gravity_accel": 100.0,
-				"move_speed": 30.0,
-				"jump_speed": 35.0,
-				"long_attack_speed": 15.0,
+				"gravity_accel": 75,
+				"move_speed": 30,
+				"jump_speed": 35,
+				"long_attack_speed": 15,
 				"long_attack_time": 4,
-				"short_attack_range": 30.0,
+				"short_attack_range": 30,
 				"dialog_time_until_next_char": 10,
 				"long_attack_energy": 4,
 				"short_attack_energy": 2,
@@ -98,11 +81,12 @@
 		}
 	],
 	"spritesheet": "resources/spritesheet.png",
-	"scene_spritesheets": ["resources/scene1_spritesheet.png"],
-	"scenes": [{
-		"spritesheet": 0,
-		"contents": { "type": "Fight" }
-	}],
+	"scenes": [
+		{
+			"contents": { "type": "Fight" }
+		}
+	],
 	"font": "resources/fonts/RobotoMono-Medium.ttf",
+	"font_sizes": [16, 24],
 	"font_ratio": 1.0
 }

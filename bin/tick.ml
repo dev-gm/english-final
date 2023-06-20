@@ -50,18 +50,13 @@ let sprite (game: Game.t) (sprite: Sprite.t) =
 				sprite.long_attack <-
 					Some (direction, time_left - 1);
 				let (movement, collided_enemies) =
-					Sprite.correct_movement_for_long_attack_collisions
-					sprite
-					(Vector2.create
-						(sprite.stats.constant.long_attack_speed *.
-							(match direction with
-								| Right -> 1.
-								| Left -> -1.)) 0.)
-					game.sprites
+					Sprite.correct_movement_for_long_attack_collisions sprite {
+						x = sprite.stats.constant.long_attack_speed *
+							(match direction with | Right -> 1 | Left -> -1);
+						y = 0
+					} game.sprites
 				in
-				let open Rectangle in
-				set_x sprite.dest_rect ((x sprite.dest_rect) +. (Vector2.x movement));
-				set_y sprite.dest_rect ((y sprite.dest_rect) +. (Vector2.y movement));
+				sprite.dest_rect <- Vector.rect_add sprite.dest_rect movement;
 				List.iter (fun (enemy: Sprite.t) ->
 					enemy.stats.health <- enemy.stats.health -
 						sprite.stats.change_on_level.long_attack;
@@ -77,7 +72,7 @@ let sprite (game: Game.t) (sprite: Sprite.t) =
 							) game.dialogs false
 						in
 						if allow_input then
-							Game.handle_user_input sprite game
+							Game.handle_user_inputs sprite game
 						else
 							[]
 				| Bot get_actions -> get_actions ()
@@ -104,8 +99,8 @@ let sprite (game: Game.t) (sprite: Sprite.t) =
 					game.dialogs <- dialog :: game.dialogs;
 					sprite.dialog <- None
 			| None -> ();
-			sprite.stats.velocity <- Vector2.add sprite.stats.velocity
-				(Vector2.create 0. sprite.stats.constant.gravity_accel);
+			sprite.stats.velocity <- Vector.add sprite.stats.velocity
+				(Vector.create 0 sprite.stats.constant.gravity_accel);
 			let (movement, collided_with_ground) =
 				Sprite.correct_movement_for_collisions
 					sprite
@@ -115,17 +110,13 @@ let sprite (game: Game.t) (sprite: Sprite.t) =
 			if collided_with_ground then
 				sprite.stats.jump_quota <- 2;
 			sprite.stats.velocity <- movement;
-			let open Rectangle in
-			set_x sprite.dest_rect ((x sprite.dest_rect) +. (Vector2.x movement));
-			set_y sprite.dest_rect ((x sprite.dest_rect) +. (Vector2.y movement));
-			if (x sprite.dest_rect) < 0. then
-				set_x sprite.dest_rect 0.
-			else if (x sprite.dest_rect) > (float_of_int game.width) then
-				set_x sprite.dest_rect (float_of_int game.width)
-			else if (y sprite.dest_rect) < 0. then
-				set_y sprite.dest_rect 0.
-			else if (y sprite.dest_rect) > (float_of_int game.height) then
-				set_y sprite.dest_rect (float_of_int game.width);
+			let x = sprite.dest_rect.x + movement.x |> ref in
+			let y = sprite.dest_rect.y + movement.y |> ref in
+			if !x < 0 then x := 0
+			else if !x > game.width then x := game.width
+			else if !y < 0 then y := 0
+			else if !y > game.height then y:= game.height;
+			sprite.dest_rect <- { sprite.dest_rect with x = !x; y = !y };
 			sprite.energy_add_countdown <- sprite.energy_add_countdown - 1;
 			if sprite.energy_add_countdown <= 0 then
 				sprite.stats.energy <- sprite.stats.energy - 1;

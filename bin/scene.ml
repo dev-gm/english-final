@@ -7,7 +7,6 @@ type contents_t =
 	| Fight
 
 type t = {
-	spritesheet: int; (* index of scene_spritesheets *)
 	contents: contents_t;
 	next_scene: int option (* if None, end game *)
 }
